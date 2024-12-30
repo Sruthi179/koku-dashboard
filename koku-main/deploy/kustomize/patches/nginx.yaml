@@ -1,0 +1,103 @@
+- op: add
+  path: /objects/0/spec/deployments/-
+  value:
+    name: clowder-api
+    replicas: ${{NGINX_REPLICAS}}
+    webServices:
+      public:
+        enabled: true
+        apiPath: cost-management
+      private:
+        enabled: false
+    podSpec:
+      image: quay.io/cloudservices/ubi8-nginx-124
+      command:
+        - nginx
+        - "-g"
+        - "daemon off;"
+      env:
+        - name: CLOWDER_ENABLED
+          value: ${CLOWDER_ENABLED}
+        - name: APP_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: ROS_OCP_API
+          value: ${ROS_OCP_API}
+      livenessProbe:
+        httpGet:
+          path: /healthz
+          port: web
+          scheme: HTTP
+        initialDelaySeconds: 30
+        periodSeconds: 20
+        successThreshold: 1
+        failureThreshold: 5
+        timeoutSeconds: 10
+      readinessProbe:
+        httpGet:
+          path: /healthz
+          port: web
+          scheme: HTTP
+        initialDelaySeconds: 30
+        periodSeconds: 20
+        successThreshold: 1
+        failureThreshold: 5
+        timeoutSeconds: 10
+      resources:
+        limits:
+          cpu: ${CPU_LIMIT_NGINX}
+          memory: ${MEMORY_LIMIT_NGINX}
+        requests:
+          cpu: ${CPU_REQUEST_NGINX}
+          memory: ${MEMORY_REQUEST_NGINX}
+      volumeMounts:
+        - name: koku-api-nginx-conf
+          mountPath: /etc/nginx
+      volumes:
+        - name: koku-api-nginx-conf
+          configMap:
+            name: koku-api-nginx-conf
+
+- op: add
+  path: /parameters/-
+  value:
+    displayName: Minimum replicas
+    name: NGINX_REPLICAS
+    required: true
+    value: '3'
+- op: add
+  path: /parameters/-
+  value:
+    displayName: Memory Request
+    name: MEMORY_REQUEST_NGINX
+    required: true
+    value: 100Mi
+- op: add
+  path: /parameters/-
+  value:
+    displayName: Memory Limit
+    name: MEMORY_LIMIT_NGINX
+    required: true
+    value: 200Mi
+- op: add
+  path: /parameters/-
+  value:
+    displayName: CPU Request
+    name: CPU_REQUEST_NGINX
+    required: true
+    value: 100m
+- op: add
+  path: /parameters/-
+  value:
+    displayName: CPU Limit
+    name: CPU_LIMIT_NGINX
+    required: true
+    value: 200m
+- op: add
+  path: /parameters/-
+  value:
+    displayName: ROS OCP API Name
+    name: ROS_OCP_API
+    required: true
+    value: 'koku-api-writes'  # Defaults to the Koku API for standalone deployments where ROS isn't deployed -- https://stackoverflow.com/q/32845674
